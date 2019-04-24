@@ -9,8 +9,11 @@ float Kp = 10, Ki = 0;
 float Kd = 0.01 * Kp;
 bool forceControl = true;
 #else
-float Kp = 400, Ki = 3;
-float Kd = 0.2 * Kp;
+//float Kp = 300;
+//float Ki = 1.5;
+//float Kd = 0.3 * Kp;
+float Kp = 0, Ki = 0;
+float Kd = 2500.0;
 bool forceControl = false;
 #endif
 
@@ -30,14 +33,19 @@ unsigned int clockSpeed = 5000000; //5 MHz
 SPISettings AS5047_settings(clockSpeed, MSBFIRST, SPI_MODE1);
 uint8_t byte1, byte2;
 uint16_t rawAngle;
-volatile long encoderValue = 0;
-long lastencoderValue = 0;
 
 /* filter setup */
-const int filterWindowSize = 20;
+const int filterWindowSize = 40;
 long filterWindow[filterWindowSize];
 int filterIndex = 0;
 float rawAngleFiltered;
+
+/* Encoder ABI setup */
+#define ENC_A 7 // pin for ENC_A
+#define ENC_B 6 // pin for ENC_B
+#define ENC_I 5
+volatile int lastEncoded = 0;
+volatile long encoderValue = 0;
 
 ///* filter setup */
 //const int outputFilterWindowSize = 1;
@@ -75,12 +83,19 @@ void setup() {
   myPID.SetMode(AUTOMATIC);
   int myRes = 12;
   myPID.SetOutputLimits(-pow(2, myRes), pow(2, myRes));
-  myPID.SetSampleTime(100);   // Sample time 100 micros
+  myPID.SetSampleTime(5000);   // Sample time 100 micros
   analogWriteResolution(myRes);
   /* Encoder setup */
   pinMode (SS_PIN, OUTPUT);
   digitalWrite(SS_PIN, HIGH);
   SPI.begin();
+  /* Encoder ABI setup */
+  pinMode(ENC_A, INPUT);
+  pinMode(ENC_B, INPUT);
+  pinMode(ENC_I, INPUT);
+  attachInterrupt(digitalPinToInterrupt(ENC_A), updateEncoderAB, CHANGE);
+  attachInterrupt(digitalPinToInterrupt(ENC_B), updateEncoderAB, CHANGE);
+  attachInterrupt(digitalPinToInterrupt(ENC_I), updateEncoderI, RISING);
   /* Motor setup */
   pinMode(pwmPin0, OUTPUT);
   pinMode(pwmPin1, OUTPUT);
@@ -101,13 +116,17 @@ void setup() {
 
 
 void loop() {
-
+  
   toggleMotorOnOff();
   readPot();
   readSerial();
-  if (forceControl) updateRawForce();
-  else updateEncoder();
-  filterEncoder();
+  if (forceControl) {
+    updateRawForce();
+  } else {
+//    updateEncoder();
+  }
+//  filterEncoderAB();
+  
   
   if (myPID.Compute()) {
 //    offsetOutput(1500.0, 4096.0);
@@ -117,15 +136,14 @@ void loop() {
 //   
     myPID.SetTunings(Kp, Ki, Kd);
     
-
-    if (forceControl) {
+//    if (forceControl) {
       pwmVal0 = (abs(Output) - Output) / 2;
       pwmVal1 = (abs(Output) + Output) / 2;
-    }
-    else {
-      pwmVal0 = (abs(Output) + Output) / 2;
-      pwmVal1 = (abs(Output) - Output) / 2;
-    }
+//    }
+//    else {
+//      pwmVal0 = (abs(Output) + Output) / 2;
+//      pwmVal1 = (abs(Output) - Output) / 2;
+//    }
     analogWrite(pwmPin0, pwmVal0);
     analogWrite(pwmPin1, pwmVal1);
   }
@@ -143,7 +161,6 @@ void readSerial() {
     Serial.print(Kp_slope);
     Serial.print(", ");
     Serial.println(Setpoint);
-
   }
   while (Serial.available() > 0) t = Serial.read();
 }
@@ -153,12 +170,10 @@ void readPot() {
   if (forceControl) {
     Setpoint = potVal / 1024.0 * 500.0;
   } else {
-    Setpoint = potVal / 1024.0 * (280.0 - 70.0) + 70.0;
+//    Setpoint = potVal / 1024.0 * (280.0 - 70.0) + 70.0;
+    Setpoint = potVal / 1024.0 * 200.0;
   }
-//  Serial.println(potVal);
 }
-
-
 
 void offsetOutput(float ofst, float outputMax) {
   Output = Output / outputMax * (outputMax - ofst) + Output / abs(Output) * ofst;
@@ -166,8 +181,6 @@ void offsetOutput(float ofst, float outputMax) {
 //  if (abs(Output) < turningPoint) {
 //    Output = (abs(Output) - ofst) / (turningPoint - ofst) * turningPoint * Output / abs(Output);
 //  }
-  
-  
 }
 
 void calculateGain() {
@@ -175,7 +188,6 @@ void calculateGain() {
   if (Kp < Kp_min) Kp = Kp_min;
   Kd = Kd_percent_Kp * Kp;
 }
-
 
 void toggleMotorOnOff() {
   debouncer.update();
@@ -191,6 +203,24 @@ void updateRawForce() {
 //  Input = rawForce;
 }
 
+void updateEncoderAB() {
+  int MSB = digitalRead(ENC_A); //MSB = most significant bit
+  int LSB = digitalRead(ENC_B); //LSB = least significant bit
+  int encoded = (MSB << 1) | LSB; //converting the 2 pin value to single number
+  int sum  = (lastEncoded << 2) | encoded; //adding it to the previous encoded value
+  if (sum == 0b1101 || sum == 0b0100 || sum == 0b0010 || sum == 0b1011) encoderValue ++;
+  if (sum == 0b1110 || sum == 0b0111 || sum == 0b0001 || sum == 0b1000) encoderValue --;
+  lastEncoded = encoded; //store this value for next time
+  encoderValue %= 4096;
+  rawAngle = encoderValue;
+  Input = ((float) encoderValue) * 360.0 / 4096.0;
+  
+}
+
+void updateEncoderI() {
+  encoderValue = 0;
+}
+
 void updateEncoder() {
   SPI.beginTransaction(AS5047_settings);
   digitalWrite (SS_PIN, LOW);
@@ -204,11 +234,16 @@ void updateEncoder() {
   rawAngle = byte1;
   rawAngle = rawAngle << 8;
   rawAngle |= byte2;
+//  rawAngle = rawAngle / 8 * 8;
+//  Serial.print(rawAngle/16);
+//  Serial.println();
 }
 
 void filterEncoder() {
   if (forceControl) filterWindow[filterIndex] = rawForce;
-  else filterWindow[filterIndex] = rawAngle;
+  else {
+    filterWindow[filterIndex] = rawAngle;
+  }
   
   long sum = 0;
   for (int i = 0; i < filterWindowSize; i++) {
@@ -224,6 +259,31 @@ void filterEncoder() {
   else {
 //      encoderValue = rawAngleFiltered;
     Input = (float)(rawAngleFiltered) / 4.0 * 360.0 / 4096.0;
+//     Input = ((float) rawAngleFiltered) * 360.0 / 4096.0;
+  }
+}
+
+void filterEncoderAB() {
+  if (forceControl) filterWindow[filterIndex] = rawForce;
+  else {
+    filterWindow[filterIndex] = encoderValue;
+  }
+  
+  long sum = 0;
+  for (int i = 0; i < filterWindowSize; i++) {
+    sum += filterWindow[i];
+  }
+  rawAngleFiltered = (float)sum / (float)filterWindowSize;
+  filterIndex++;
+  filterIndex %= filterWindowSize;
+
+  if (forceControl) {
+    Input = rawAngleFiltered;
+  }
+  else {
+//      encoderValue = rawAngleFiltered;
+//    Input = (float)(rawAngleFiltered) / 4.0 * 360.0 / 4096.0;
+     Input = ((float) rawAngleFiltered) * 360.0 / 4096.0;
   }
 }
 
@@ -232,13 +292,12 @@ long currPrintTime;
 long printTimeInterval = 10;
 
 void printVals() {
-//  if (pwmVal0 != pwmVal0_last || pwmVal1 != pwmVal1_last) {
     currPrintTime = millis();
     if (currPrintTime - lastPrintTime > printTimeInterval) {
-      Serial.print(Setpoint);
-      Serial.print(", ");
-//      Serial.print(Kp);
+//      Serial.print(Setpoint);
 //      Serial.print(", ");
+      Serial.print(encoderValue);
+      Serial.print(", ");
       Serial.print(Output);
       Serial.print(", ");
       Serial.print(Input);
@@ -247,5 +306,4 @@ void printVals() {
     }
     pwmVal0_last = pwmVal0;
     pwmVal1_last = pwmVal1;
-//}
 }
