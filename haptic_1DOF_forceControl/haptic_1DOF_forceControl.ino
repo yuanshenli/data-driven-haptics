@@ -1,19 +1,19 @@
-//#define FORCE_CONTROL
+#define FORCE_CONTROL
 
 /* PID setup */
 #include <PID_v1_float_micros.h>
 float Setpoint, Input, Output;
 
 #ifdef FORCE_CONTROL
-float Kp = 10, Ki = 0;
-float Kd = 0.0 * Kp;
+float Kp = 15, Ki = 0.12;
+float Kd = 0.012 * Kp;
 bool forceControl = true;
 #else
-float Kp = 75;
-float Ki = 0.75;
-float Kd = 250; //  * Kp;
-//float Kp = 0, Ki = 0;
-//float Kd = 2500.0;
+//float Kp = 300;
+//float Ki = 1.5;
+//float Kd = 0.3 * Kp;
+float Kp = 0, Ki = 0;
+float Kd = 2500.0;
 bool forceControl = false;
 #endif
 
@@ -21,10 +21,10 @@ PID myPID(&Input, &Output, &Setpoint, Kp, Ki, Kd, DIRECT);
 float lastSetpoint = Setpoint;
 
 /* Gain scheduling setup */
-float Kp_max = 150;
+float Kp_max = 400;
 float Kp_min = 50;
-float Kp_slope = -5;
-float Kd_percent_Kp = 0.015;
+float Kp_slope = -10;
+float Kd_percent_Kp = 0.5;
 
 /* Encoder setup */
 #define SS_PIN 10
@@ -35,7 +35,7 @@ uint8_t byte1, byte2;
 uint16_t rawAngle;
 
 /* filter setup */
-const int filterWindowSize = 20;
+const int filterWindowSize = 150;
 long filterWindow[filterWindowSize];
 int filterIndex = 0;
 float rawAngleFiltered;
@@ -46,12 +46,6 @@ float rawAngleFiltered;
 #define ENC_I 5
 volatile int lastEncoded = 0;
 volatile long encoderValue = 0;
-
-///* filter setup */
-//const int outputFilterWindowSize = 1;
-//long outputFilterWindow[filterWindowSize];
-//int outputFilterIndex = 0;
-//long outputFiltered;
 
 /* Motor setup */
 #define pwmPin0 2
@@ -82,7 +76,7 @@ void setup() {
   Setpoint = 500;
   myPID.SetMode(AUTOMATIC);
   int myRes = 12;
-  myPID.SetOutputLimits(-pow(2, myRes), pow(2, myRes));
+  myPID.SetOutputLimits(500, pow(2, myRes));
   myPID.SetSampleTime(100);   // Sample time 100 micros
   analogWriteResolution(myRes);
   /* Encoder setup */
@@ -125,19 +119,19 @@ void loop() {
   } else {
 //    updateEncoder();
   }
-  filterEncoderAB();
-//  filterEncoder();
+//  filterEncoderAB();
+  filterEncoder();
   
   
   if (myPID.Compute()) {
-    offsetOutput(800.0, 4096.0);
+//    offsetOutput(1500.0, 4096.0);
 //  if (!forceControl) {
 //    calculateGain();
 //  }
 //   
     myPID.SetTunings(Kp, Ki, Kd);
-    pwmVal0 = (abs(Output) - Output) / 2;
-    pwmVal1 = (abs(Output) + Output) / 2;
+    pwmVal0 = 0;
+    pwmVal1 = Output;
     analogWrite(pwmPin0, pwmVal0);
     analogWrite(pwmPin1, pwmVal1);
   }
@@ -194,7 +188,7 @@ void toggleMotorOnOff() {
 void updateRawForce() {
   int val2 = analogRead(22);
   rawForce = val2;
-  Input = rawForce;
+//  Input = rawForce;
 }
 
 void updateEncoderAB() {
@@ -283,8 +277,8 @@ long printTimeInterval = 10;
 void printVals() {
     currPrintTime = millis();
     if (currPrintTime - lastPrintTime > printTimeInterval) {
-//      Serial.print(Setpoint);
-//      Serial.print(", ");
+      Serial.print(Setpoint);
+      Serial.print(", ");
 //      Serial.print(encoderValue);
 //      Serial.print(", ");
 //      Serial.print(Output);
