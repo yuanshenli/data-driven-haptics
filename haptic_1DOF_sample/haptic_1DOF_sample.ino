@@ -107,11 +107,7 @@ void setup() {
 
 
 void loop() {
-  while (!startSample) {
-    printVals();
-    debouncer.update();
-    if ( debouncer.fell() ) startSample = true;
-  }
+  toggleState();
   updateEncoderAB();
   filterEncoderAB();
   int thisForce = updateRawForce();
@@ -132,11 +128,11 @@ void loop() {
 //  }
   if (bufCount == bufSize) {
 //    if (dataCount < dataSize) {
-      posData[dataCount] = averageBuf(posBuffer);
-      forceData[dataCount] = averageBuf(forceBuffer);
-      Serial.print(posData[dataCount]);
-      Serial.print(", ");
-      Serial.println(forceData[dataCount]);
+      posData[dataCount] = averageBuf(posBuffer, bufSize);
+      forceData[dataCount] = averageBuf(forceBuffer, bufSize);
+//      Serial.print(posData[dataCount]);
+//      Serial.print(", ");
+//      Serial.println(forceData[dataCount]);
       dataCount++;
       Setpoint += posRes;
 //    }
@@ -144,20 +140,50 @@ void loop() {
   }
 
   if (dataCount == dataSize) {
-    Serial.println("dataBuffer full");
+    Serial.print("pos = ");
+    printBuf(posData, dataSize);
+    Serial.print("force = ");
+    printBuf(forceData, dataSize);
+    analogWrite(pwmPin0, 0);
+    analogWrite(pwmPin1, 0);
     while(true);
   }
   
 //  printVals();
 }
 
-float averageBuf(float arr[] ) {
-  int arrSize = sizeof(arr) / sizeof(arr[0]);
+float averageBuf(float arr[], int  arrSize) {
   double sum = 0;
   for (int i = 0; i < arrSize; i++) {
     sum += arr[i];
   }
   return sum/(float)arrSize;
+}
+
+void printBuf(float arr[], int arrSize) {
+  Serial.print("[");
+  for (int i = 0; i < arrSize; i++) {
+    Serial.print(arr[i]);
+    if (i < arrSize - 1) {
+      Serial.print(", ");
+    } else {
+      Serial.println("] ");
+    }
+  }
+}
+
+void toggleState() {
+  debouncer.update();
+  if ( debouncer.fell() ) startSample = !startSample;
+  while (!startSample) {
+    debouncer.update();
+    if ( debouncer.fell() ) startSample = !startSample;
+    currPrintTime = millis();
+    if (currPrintTime - lastPrintTime > printTimeInterval) {
+      Serial.println("-1");
+      lastPrintTime = currPrintTime;
+    }
+  }
 }
 
 

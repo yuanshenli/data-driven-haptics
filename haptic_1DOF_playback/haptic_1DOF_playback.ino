@@ -2,8 +2,9 @@
 /* PID setup */
 #include <PID_v1_float_micros.h>
 float Setpoint, Input, Output;
-float Kp = 15, Ki = 0.12;
-float Kd = 0.012 * Kp;
+float Kp = 10;
+float Ki = 0; //0.12;
+float Kd = 0; //.18 * Kp;
 PID myPID(&Input, &Output, &Setpoint, Kp, Ki, Kd, DIRECT);
 
 /* Encoder setup */
@@ -45,7 +46,7 @@ Bounce debouncer = Bounce();
 /*Print setup*/
 long lastPrintTime = millis();
 long currPrintTime; 
-long printTimeInterval = 10;
+long printTimeInterval = 50;
 
 /* Serial setup */
 String inMessage;
@@ -64,7 +65,7 @@ void setup() {
   Setpoint = 0;
   myPID.SetMode(AUTOMATIC);
   int myRes = 12;
-  myPID.SetOutputLimits(500, pow(2, myRes));
+  myPID.SetOutputLimits(0, pow(2, myRes));
   myPID.SetSampleTime(100);   // Sample time 100 micros
   analogWriteResolution(myRes);
   /* Encoder ABI setup */
@@ -91,11 +92,8 @@ void setup() {
 
 
 void loop() {
-  while (!startSample) {
-    printVals();
-    debouncer.update();
-    if ( debouncer.fell() ) startSample = true;
-  }
+  
+  toggleState();
   updateEncoderAB();
   filterEncoderAB();
   int thisForce = updateRawForce();
@@ -129,6 +127,19 @@ float calculateSetpoint() {
       if (Input_pos > profilePos[i]) continue;
       else {
         interp_out = profileForce[i-1] + (Input_pos - profilePos[i-1]) / (profilePos[i] - profilePos[i-1]) * (profileForce[i] - profileForce[i-1]);
+//        Serial.print(profileForce[i-1]);
+//        Serial.print(", ");
+//        Serial.print(interp_out);
+//        Serial.print(", ");
+//        Serial.print(profileForce[i]);
+//        Serial.print(";   ");
+//        Serial.print(profilePos[i-1]);
+//        Serial.print(", ");
+//        Serial.print(Input_pos);
+//        Serial.print(", ");
+//        Serial.print(profilePos[i]);
+//        Serial.println();
+        
         return interp_out;
       }
     }
@@ -143,11 +154,18 @@ void offsetOutput(float ofst, float outputMax) {
 }
 
 
-void toggleMotorOnOff() {
+void toggleState() {
   debouncer.update();
-  if ( debouncer.fell() ) {
-    motorEnable = !motorEnable;
-    digitalWrite(enablePin0, motorEnable);
+  if ( debouncer.fell() ) startSample = !startSample;
+  while (!startSample) {
+    Setpoint = 0l;
+    debouncer.update();
+    if ( debouncer.fell() ) startSample = !startSample;
+    currPrintTime = millis();
+    if (currPrintTime - lastPrintTime > printTimeInterval) {
+//      Serial.println("-1");
+      lastPrintTime = currPrintTime;
+    }
   }
 }
 
@@ -190,8 +208,8 @@ void printVals() {
     if (currPrintTime - lastPrintTime > printTimeInterval) {
       Serial.print(Setpoint);
       Serial.print(", ");
-//      Serial.print(bufCount);
-//      Serial.print(", ");
+      Serial.print(Output);
+      Serial.print(", ");
 //      Serial.print(dataCount);
 //      Serial.print(", ");
       Serial.print(Input);
