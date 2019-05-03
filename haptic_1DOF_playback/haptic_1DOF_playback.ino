@@ -1,61 +1,32 @@
 
-/* PID setup */
-#include <PID_v1_float_micros.h>
-float Setpoint, Input, Output;
-float Kp = 10;
-float Ki = 0; //0.12;
-float Kd = 0; //.18 * Kp;
-PID myPID(&Input, &Output, &Setpoint, Kp, Ki, Kd, DIRECT);
+#include <DDHapticHelper.h>
+float myKp = 15;
+float myKi = 0; //0.12;
+float myKd = 0; //0.18 * Kp;
 
-/* Encoder setup */
-#define SS_PIN 10
-#include "SPI.h"
-unsigned int clockSpeed = 5000000; //5 MHz
-SPISettings AS5047_settings(clockSpeed, MSBFIRST, SPI_MODE1);
-uint8_t byte1, byte2;
-uint16_t rawAngle;
+/*Velocity calculation*/
+float xh = 0;           // position of the handle [m]
+float xh_prev;          // Distance of the handle at previous time step
+float xh_prev2;
+float dxh;              // Velocity of the handle
+float dxh_prev;
+float dxh_prev2;
+float dxh_filt;         // Filtered velocity of the handle
+float dxh_filt_prev;
+float dxh_filt_prev2;
+long velTime = 10;
+long lastVelUpdate = 0;
+long currVelUpdate = 0;
 
-float Input_pos;
+float Kd_vel = 50.0;
 
-/* filter setup */
-const int filterWindowSize = 20;
-long filterWindow[filterWindowSize];
-int filterIndex = 0;
-float rawAngleFiltered;
 
-/* Encoder ABI setup */
-#define ENC_A 7 // pin for ENC_A
-#define ENC_B 6 // pin for ENC_B
-#define ENC_I 5
-volatile int lastEncoded = 0;
-volatile long encoderValue = 0;
+/*force filter*/
+int thisForce = 0;
+#define ffWindowSize 50
+float ffWindow[ffWindowSize];
+int ffIndex = 0;
 
-/* Motor setup */
-#define pwmPin0 2
-#define pwmPin1 3
-#define enablePin0 4
-int pwmVal0 = 0;
-int pwmVal1 = 0;
-bool motorEnable = true;
-
-/* Button setup */
-#include <Bounce2.h>
-#define buttonPin 23
-Bounce debouncer = Bounce();
-
-/*Print setup*/
-long lastPrintTime = millis();
-long currPrintTime; 
-long printTimeInterval = 50;
-
-/* Serial setup */
-String inMessage;
-char t;
-
-/* Playback setup */
-#include "profile.h"
-
-bool startSample = false;
 
 void setup() {
   Serial.begin(115200);
@@ -65,9 +36,11 @@ void setup() {
   Setpoint = 0;
   myPID.SetMode(AUTOMATIC);
   int myRes = 12;
-  myPID.SetOutputLimits(0, pow(2, myRes));
+//  myPID.SetOutputLimits(0, pow(2, myRes));
+  myPID.SetOutputLimits(-pow(2, myRes), pow(2, myRes));
   myPID.SetSampleTime(100);   // Sample time 100 micros
   analogWriteResolution(myRes);
+  myPID.SetTunings(myKp, myKi, myKd);
   /* Encoder ABI setup */
   pinMode(ENC_A, INPUT);
   pinMode(ENC_B, INPUT);
@@ -94,15 +67,20 @@ void setup() {
 void loop() {
   
   toggleState();
+  
   updateEncoderAB();
   filterEncoderAB();
-  int thisForce = updateRawForce();
-  Input = thisForce;
+  thisForce = updateRawForce();
+  Input = filterForce();
+  
+  updateVelocity();
 
   Setpoint = calculateSetpoint();
   
   if (myPID.Compute()) {
+    Output -= dxh_filt * Kd_vel;
     offsetOutput(800.0, 4096.0);  
+    
     pwmVal0 = (abs(Output) - Output) / 2;
     pwmVal1 = (abs(Output) + Output) / 2;
     analogWrite(pwmPin0, pwmVal0);
@@ -112,95 +90,34 @@ void loop() {
   printVals();
 }
 
+float filterForce() {
+  ffWindow[ffIndex] = thisForce;
+  float ffFilt = averageBuf(ffWindow, ffWindowSize);
+  ffIndex++;
+  ffIndex %= ffWindowSize;
+  return ffFilt;
+}
 
-float calculateSetpoint() {
-  float interp_out = 0;
-  int profileSize = sizeof(profilePos) / sizeof(profilePos[0]);
-  if (Input_pos <= profilePos[0]) {
-    interp_out = profileForce[0];
-    return interp_out;
-  } else if (Input_pos >= profilePos[profileSize]) {
-    interp_out = profileForce[profileSize];
-    return interp_out;
-  } else {
-    for (int i = 0; i < profileSize; i++) {
-      if (Input_pos > profilePos[i]) continue;
-      else {
-        interp_out = profileForce[i-1] + (Input_pos - profilePos[i-1]) / (profilePos[i] - profilePos[i-1]) * (profileForce[i] - profileForce[i-1]);
-//        Serial.print(profileForce[i-1]);
-//        Serial.print(", ");
-//        Serial.print(interp_out);
-//        Serial.print(", ");
-//        Serial.print(profileForce[i]);
-//        Serial.print(";   ");
-//        Serial.print(profilePos[i-1]);
-//        Serial.print(", ");
-//        Serial.print(Input_pos);
-//        Serial.print(", ");
-//        Serial.print(profilePos[i]);
-//        Serial.println();
-        
-        return interp_out;
-      }
-    }
+void updateVelocity() {
+  currVelUpdate = millis();
+  if (currVelUpdate - lastVelUpdate > velTime) {
+    xh = Input_pos;
+    dxh = (double)(xh - xh_prev);
+    // Calculate the filtered velocity of the handle using an infinite impulse response filter
+    dxh_filt = .85*dxh + 0.1*dxh_prev + 0.05 * dxh_prev2; 
+    
+    xh_prev2 = xh_prev;
+    xh_prev = xh;
+    
+    dxh_prev2 = dxh_prev;
+    dxh_prev = dxh;
+    
+    dxh_filt_prev2 = dxh_filt_prev;
+    dxh_filt_prev = dxh_filt;
+    
+    lastVelUpdate = currVelUpdate;
   }
-  return -1;
   
-}
-
-
-void offsetOutput(float ofst, float outputMax) {
-  Output = Output / outputMax * (outputMax - ofst) + Output / abs(Output) * ofst;
-}
-
-
-void toggleState() {
-  debouncer.update();
-  if ( debouncer.fell() ) startSample = !startSample;
-  while (!startSample) {
-    Setpoint = 0l;
-    debouncer.update();
-    if ( debouncer.fell() ) startSample = !startSample;
-    currPrintTime = millis();
-    if (currPrintTime - lastPrintTime > printTimeInterval) {
-//      Serial.println("-1");
-      lastPrintTime = currPrintTime;
-    }
-  }
-}
-
-int updateRawForce() {
-  int val2 = analogRead(22);
-  return val2;
-}
-
-void updateEncoderAB() {
-  int MSB = digitalRead(ENC_A); //MSB = most significant bit
-  int LSB = digitalRead(ENC_B); //LSB = least significant bit
-  int encoded = (MSB << 1) | LSB; //converting the 2 pin value to single number
-  int sum  = (lastEncoded << 2) | encoded; //adding it to the previous encoded value
-  if (sum == 0b1101 || sum == 0b0100 || sum == 0b0010 || sum == 0b1011) encoderValue ++;
-  if (sum == 0b1110 || sum == 0b0111 || sum == 0b0001 || sum == 0b1000) encoderValue --;
-  lastEncoded = encoded; //store this value for next time
-  encoderValue %= 4096;
-  rawAngle = encoderValue;
-//  Input_pos = ((float) encoderValue) * 360.0 / 4096.0;
-}
-
-void updateEncoderI() {
-  encoderValue = 0;
-}
-
-void filterEncoderAB() {
-  filterWindow[filterIndex] = encoderValue;
-  long sum = 0;
-  for (int i = 0; i < filterWindowSize; i++) {
-    sum += filterWindow[i];
-  }
-  rawAngleFiltered = (float)sum / (float)filterWindowSize;
-  filterIndex++;
-  filterIndex %= filterWindowSize;
-  Input_pos = ((float) rawAngleFiltered) * 360.0 / 4096.0;
 }
 
 void printVals() {
@@ -208,8 +125,8 @@ void printVals() {
     if (currPrintTime - lastPrintTime > printTimeInterval) {
       Serial.print(Setpoint);
       Serial.print(", ");
-      Serial.print(Output);
-      Serial.print(", ");
+//      Serial.print(dxh_filt*100.0);
+//      Serial.print(", ");
 //      Serial.print(dataCount);
 //      Serial.print(", ");
       Serial.print(Input);
