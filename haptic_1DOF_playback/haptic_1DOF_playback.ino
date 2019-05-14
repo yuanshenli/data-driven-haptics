@@ -1,6 +1,6 @@
 
 #include <DDHapticHelper.h>
-float myKp = 15;
+float myKp = 2;
 float myKi = 0; //0.12;
 float myKd = 0; //0.18 * Kp;
 
@@ -18,7 +18,7 @@ long velTime = 10;
 long lastVelUpdate = 0;
 long currVelUpdate = 0;
 
-float Kd_vel = 50.0;
+float Kd_vel = 0; //0.5;
 
 
 /*force filter*/
@@ -27,6 +27,7 @@ int thisForce = 0;
 float ffWindow[ffWindowSize];
 int ffIndex = 0;
 
+float positionVal = 0;
 
 void setup() {
   Serial.begin(115200);
@@ -69,7 +70,7 @@ void loop() {
   toggleState();
   
   updateEncoderAB();
-  filterEncoderAB();
+  positionVal = filterEncoderAB();
   thisForce = updateRawForce();
   Input = filterForce();
   
@@ -81,8 +82,8 @@ void loop() {
     Output -= dxh_filt * Kd_vel;
     offsetOutput(800.0, 4096.0);  
     
-    pwmVal0 = (abs(Output) - Output) / 2;
-    pwmVal1 = (abs(Output) + Output) / 2;
+    pwmVal0 = (abs(Output) + Output) / 2;
+    pwmVal1 = (abs(Output) - Output) / 2;
     analogWrite(pwmPin0, pwmVal0);
     analogWrite(pwmPin1, pwmVal1);
   }
@@ -124,11 +125,11 @@ void printVals() {
     currPrintTime = millis();
     if (currPrintTime - lastPrintTime > printTimeInterval) {
       Serial.print(Setpoint);
-      Serial.print(", ");
+//      Serial.print(", ");
 //      Serial.print(dxh_filt*100.0);
 //      Serial.print(", ");
 //      Serial.print(dataCount);
-//      Serial.print(", ");
+      Serial.print(", ");
       Serial.print(Input);
       Serial.println();
       lastPrintTime = currPrintTime;

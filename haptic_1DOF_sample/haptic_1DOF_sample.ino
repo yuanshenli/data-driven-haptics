@@ -4,6 +4,13 @@ float myKp = 75;
 float myKi = 0.75;
 float myKd = 250; //  * Kp;
 
+bool isSaturated = false;
+float lastPos = 0;
+float lastForce = 0;
+float maxForce = 620;
+float forceIncFill = 20;
+float posIncFill = posRes;
+
 
 void setup() {
   Serial.begin(115200);
@@ -41,33 +48,45 @@ void setup() {
 
 
 void loop() {
-  toggleState();
-  updateEncoderAB();
-  filterEncoderAB();
-  Input = Input_pos;
-  int thisForce = updateRawForce();
-  if (myPID.Compute()) {
-    offsetOutput(800.0, 4096.0);  
-    myPID.SetTunings(Kp, Ki, Kd);
-    pwmVal0 = (abs(Output) - Output) / 2;
-    pwmVal1 = (abs(Output) + Output) / 2;
-    analogWrite(pwmPin0, pwmVal0);
-    analogWrite(pwmPin1, pwmVal1);
+  if (!isSaturated) {
+    toggleState();
+    updateEncoderAB();
+    filterEncoderAB();
+    Input = Input_pos;
+    int thisForce = updateRawForce();
+  
+    if (myPID.Compute()) {
+      offsetOutput(800.0, 4096.0);  
+      myPID.SetTunings(Kp, Ki, Kd);
+      pwmVal0 = (abs(Output) - Output) / 2;
+      pwmVal1 = (abs(Output) + Output) / 2;
+      analogWrite(pwmPin0, pwmVal0);
+      analogWrite(pwmPin1, pwmVal1);
+    }
+    // Take sample and take into the buffers
+    posBuffer[bufCount] = Input;
+    forceBuffer[bufCount] = thisForce;
+  } else {
+    posBuffer[bufCount] = lastPos + posIncFill;
+    forceBuffer[bufCount] = lastForce + forceIncFill;
+    analogWrite(pwmPin0, 0);
+    analogWrite(pwmPin1, 0);
   }
-  
-  
-
-  // Take sample and take into the buffers
-  posBuffer[bufCount] = Input;
-  forceBuffer[bufCount] = thisForce;
   bufCount++;
   // When buffers are full, take the average of buffer and save into data arrays
   if (bufCount == bufSize) {
-      posData[dataCount] = averageBuf(posBuffer, bufSize);
-      forceData[dataCount] = averageBuf(forceBuffer, bufSize);
-      dataCount++;
-      Setpoint += posRes;
+    posData[dataCount] = averageBuf(posBuffer, bufSize);
+    forceData[dataCount] = averageBuf(forceBuffer, bufSize);
+    if (forceData[dataCount] >= maxForce && lastForce >= maxForce) {
+      isSaturated = true;
+    }
+    lastPos = posData[dataCount];
+    lastForce = forceData[dataCount];
+    dataCount++;
+    Setpoint += posRes;
     bufCount %= bufSize;
+    
+    
   }
   // When data arrays are full, print them
   if (dataCount == dataSize) {
@@ -88,11 +107,11 @@ void printVals() {
     if (currPrintTime - lastPrintTime > printTimeInterval) {
       Serial.print(Setpoint);
       Serial.print(", ");
-//      Serial.print(bufCount);
-//      Serial.print(", ");
+      Serial.print(Input);
+      Serial.print(", ");
 //      Serial.print(dataCount);
 //      Serial.print(", ");
-      Serial.print(Input);
+      Serial.print(forceBuffer[bufCount]);
       Serial.println();
       lastPrintTime = currPrintTime;
     }

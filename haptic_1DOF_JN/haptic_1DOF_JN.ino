@@ -165,7 +165,7 @@ void readPot() {
     Setpoint = potVal / 1024.0 * 300.0;
   } else {
 //    Setpoint = potVal / 1024.0 * (280.0 - 70.0) + 70.0;
-    Setpoint = potVal / 1024.0 * 200.0;
+    Setpoint = potVal / 1024.0 * 600.0;
   }
 }
 
@@ -205,14 +205,14 @@ void updateEncoderAB() {
   if (sum == 0b1101 || sum == 0b0100 || sum == 0b0010 || sum == 0b1011) encoderValue ++;
   if (sum == 0b1110 || sum == 0b0111 || sum == 0b0001 || sum == 0b1000) encoderValue --;
   lastEncoded = encoded; //store this value for next time
-  encoderValue %= 4096;
+//  encoderValue %= 4096;
   rawAngle = encoderValue;
   Input = ((float) encoderValue) * 360.0 / 4096.0;
   
 }
 
 void updateEncoderI() {
-  encoderValue = 0;
+//  encoderValue = 0;
 }
 
 void updateEncoder() {
@@ -283,12 +283,12 @@ long printTimeInterval = 10;
 void printVals() {
     currPrintTime = millis();
     if (currPrintTime - lastPrintTime > printTimeInterval) {
-//      Serial.print(Setpoint);
+      Serial.print(Setpoint);
 //      Serial.print(", ");
 //      Serial.print(encoderValue);
 //      Serial.print(", ");
 //      Serial.print(Output);
-//      Serial.print(", ");
+      Serial.print(", ");
       Serial.print(Input);
       Serial.println();
       lastPrintTime = currPrintTime;
