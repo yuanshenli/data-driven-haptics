@@ -1,8 +1,8 @@
 
 #include <DDHapticHelper.h>
-float myKp = 2;
-float myKi = 0; //0.12;
-float myKd = 0; //0.18 * Kp;
+float myKp = 3 ;
+float myKi = 0.0; //0.12;
+float myKd = 0.0; //0.01 * Kp;
 
 /*Velocity calculation*/
 float xh = 0;           // position of the handle [m]
@@ -18,7 +18,7 @@ long velTime = 10;
 long lastVelUpdate = 0;
 long currVelUpdate = 0;
 
-float Kd_vel = 0; //0.5;
+float Kd_vel = 0.0; //0.5;
 
 
 /*force filter*/

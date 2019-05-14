@@ -7,7 +7,7 @@ float myKd = 250; //  * Kp;
 bool isSaturated = false;
 float lastPos = 0;
 float lastForce = 0;
-float maxForce = 620;
+float maxForce = 600;
 float forceIncFill = 20;
 float posIncFill = posRes;
 
