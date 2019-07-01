@@ -57,7 +57,7 @@ void loop() {
   
     if (myPID.Compute()) {
       offsetOutput(800.0, 4096.0);  
-      myPID.SetTunings(Kp, Ki, Kd);
+//      myPID.SetTunings(Kp, Ki, Kd);
       pwmVal0 = (abs(Output) - Output) / 2;
       pwmVal1 = (abs(Output) + Output) / 2;
       analogWrite(pwmPin0, pwmVal0);
