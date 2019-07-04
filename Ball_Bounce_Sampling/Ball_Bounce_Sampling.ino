@@ -83,8 +83,9 @@ void setup() {
   }
 }
 
-
+int ct = 0;
 void loop() {
+  ct++;
   printVals();
   updateAcc();
   thisForce = updateRawForce();
@@ -112,6 +113,7 @@ void loop() {
       Serial.println("switch to WAIT");
       break;
   }
+  
   
 }
 
@@ -192,7 +194,9 @@ void printVals() {
     Serial.print(thisForce);
     Serial.print(", ");
     Serial.print(accZ-538);
-    Serial.println();
+    Serial.print(", ");
+    Serial.println(ct);
+    ct = 0;
     lastPrintTime = currPrintTime;
   }
 }
