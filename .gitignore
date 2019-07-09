@@ -1,2 +1,6 @@
 .DS_Store
 ~$*
+HDNN/runs/*
+HDNN/data/train/*
+HDNN/data/test/*
+HDNN/data/validation/*

@@ -1,5 +1,6 @@
 import os
 import numpy as np
+import csv
 
 
 def split_file(lines_per_file, starting_line, save_dir):
@@ -35,19 +36,17 @@ if __name__== "__main__":
 	train_percent = 0.8
 	validate_percent = 0.1
 	test_percent = 0.1
-	# starting_line = 0
-	# for starting_line in range(int(lines_per_file * train_percent)):
-	# 	split_file(lines_per_file, starting_line, 'train')
+	starting_line = 0
+	for starting_line in range(int(lines_per_file * train_percent)):
+		split_file(lines_per_file, starting_line, 'train')
 
-	# for starting_line in range(int(lines_per_file * train_percent), int(lines_per_file * (train_percent + validate_percent))):
-	# 	split_file(lines_per_file, starting_line, 'validation')
+	for starting_line in range(int(lines_per_file * train_percent), int(lines_per_file * (train_percent + validate_percent))):
+		split_file(lines_per_file, starting_line, 'validation')
 
-	# for starting_line in range(int(lines_per_file * (train_percent + validate_percent)), lines_per_file):
-	# 	split_file(lines_per_file, starting_line, 'test')
+	for starting_line in range(int(lines_per_file * (train_percent + validate_percent)), lines_per_file):
+		split_file(lines_per_file, starting_line, 'test')
 
-	mypath = 'train'
-	for idx, file in enumerate(os.listdir(mypath)):
-            data[idx] = np.loadtxt(os.join(mypath, file), delimiter=',')
+
 
 
 

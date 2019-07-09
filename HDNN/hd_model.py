@@ -1,18 +1,15 @@
 import torch
 import torch.nn as nn
 import torch.nn.utils
-import torch.nn.functional as Fimport torch
-import torch.nn as nn
-import torch.nn.utils
 import torch.nn.functional as F
 
+
 class HDModel(nn.Module):
-    def __init__(self, input_size, hidden_size):
-        super(Model, self).__init__()
+    def __init__(self, input_size, hidden_size = 100):
+        super(HDModel, self).__init__()
 
         # Defining some parameters
         self.hidden_size = hidden_size
-        self.n_layers = n_layers
 
         self.fc_x = nn.Linear(input_size, hidden_size)
         self.relu_x = nn.ReLU()
@@ -27,16 +24,16 @@ class HDModel(nn.Module):
     
     def forward(self, x, a, f):
         
-        out_x = self.fc1(x)
-        out_x = self.relu(out_x)
+        out_x = self.fc_x(x)
+        out_x = self.relu_x(out_x)
 
-        out_a = self.fc1(a)
-        out_a = self.relu(out_a)
+        out_a = self.fc_a(a)
+        out_a = self.relu_a(out_a)
 
-        out_f = self.fc1(f)
-        out_f = self.relu(out_f)
+        out_f = self.fc_f(f)
+        out_f = self.relu_f(out_f)
 
-        out_combined = torch.cat(out_x, out_a, out_f, dim=0)
+        out_combined = torch.cat((out_x, out_a, out_f), dim=1)
 
         out = self.fc(out_combined)
         
