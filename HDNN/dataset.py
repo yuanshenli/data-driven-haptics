@@ -34,14 +34,5 @@ class HDDataset(Dataset):
         return (self.x[index,:,0], self.x[index,:,1], self.x[index,:,2], self.y[index])
 
     def __len__(self):
-        return len(self.x)
+        return len(self.y)
 
-# # Wait, is this a CPU tensor now? Why? Where is .to(device)?
-# x_train_tensor = torch.from_numpy(x_train).float()
-# y_train_tensor = torch.from_numpy(y_train).float()
-
-# train_data = CustomDataset(x_train_tensor, y_train_tensor)
-# print(train_data[0])
-
-# train_data = TensorDataset(x_train_tensor, y_train_tensor)
-# print(train_data[0])

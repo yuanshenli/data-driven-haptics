@@ -1,7 +1,5 @@
 import os
 import numpy as np
-import csv
-
 
 def split_file(lines_per_file, starting_line, save_dir):
 	smallfile = None
