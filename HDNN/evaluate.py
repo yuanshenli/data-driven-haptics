@@ -1,33 +1,95 @@
-def predict(model, character):
-    # One-hot encoding our input to fit into the model
-    character = np.array([[char2int[c] for c in character]])
-    character = one_hot_encode(character, dict_size, character.shape[1], 1)
-    character = torch.from_numpy(character)
-    character.to(device)
-    
-    out, hidden = model(character)
+import os
+import sys
+from datetime import datetime
+from tqdm import tqdm
 
-    prob = nn.functional.softmax(out[-1], dim=0).data
-    # Taking the class with the highest probability score from the output
-    char_ind = torch.max(prob, dim=0)[1].item()
+from hd_model import HDModel
+from dataset import HDDataset
 
-    return int2char[char_ind], hidden
-
-def sample(model, out_len, start='hey'):
-    model.eval() # eval mode
-    start = start.lower()
-    # First off, run through the starting characters
-    chars = [ch for ch in start]
-    size = out_len - len(chars)
-    # Now pass in the previous characters and get a new one
-    for ii in range(size):
-        char, h = predict(model, chars)
-        chars.append(char)
-
-    return ''.join(chars)
+import torch
+import torch.nn as nn
+from torch.utils.data import DataLoader
+# import torch.nn.utils
+# import torch.nn.functional as F
 
 
+logdir = 'runs/HDModel-190710-162338'
+
+resume_epochs = 186
+n_epochs = 10000
+validation_interval = 50
+
+lr=0.0006
+batch_size = 64
+
+loss_sum = 0
+loss_iter = 0
+
+device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+
+model_path = os.path.join(logdir, f'model-{resume_epochs}.pt')
+model = torch.load(model_path)
+criterion = nn.MSELoss()
+# optimizer = torch.optim.Adam(model.parameters(), lr=lr)
+# optimizer.load_state_dict(torch.load(os.path.join(logdir, 'last-optimizer-state.pt')))
+
+print('---- loading training data ------')
+train_set = HDDataset(path='data', group='train')
+training_generator = DataLoader(train_set, batch_size, shuffle=False)
+
+
+print('---- loading validation data ----')
+validation_set = HDDataset(path='data', group='validation')
+validation_generator = DataLoader(validation_set, len(validation_set), shuffle=False)
 
 
 
-sample(model, 15, 'good')
+# loss on training data
+model.eval()
+for local_x, local_a, local_f, local_y in training_generator:
+    print('---- training batch-------------------')
+    # optimizer.zero_grad() # Clears existing gradients from previous epoch
+    local_x = local_x.to(device)
+    local_a = local_a.to(device)
+    local_f = local_f.to(device)
+    local_y = local_y.to(device)
+    output = model(local_x, local_a, local_f)
+    for idx in range(len(local_y)):
+        print("{:.1f}, {:.1f}".format(output.view(-1)[idx], local_y[idx]))
+    # print(local_y)
+    loss = criterion(output.view(-1), local_y)
+    loss_sum += loss.item()
+    loss_iter += 1
+
+   
+
+# loss on validation data
+validation_output_file_name = logdir + '/validation_out.log'
+with open(validation_output_file_name, 'w') as validation_output_file:
+    for validation_x, validation_a, validation_f, validation_y in validation_generator:
+        print('---- validation batch-------------------') 
+        validation_x = validation_x.to(device)
+        validation_a = validation_a.to(device)
+        validation_f = validation_f.to(device)
+        validation_y = validation_y.to(device)
+        validation_output = model(validation_x, validation_a, validation_f)
+        for idx in range(len(validation_y)):
+            print("{:.1f}, {:.1f}".format(validation_output.view(-1)[idx], validation_y[idx]))
+            validation_output_file.write('%.1f, %.1f\n' % (validation_output.view(-1)[idx], validation_y[idx]))
+        
+        val_loss = criterion(validation_output.view(-1), validation_y)
+           
+validation_output_file.close()
+
+
+# print("Validation loss: {:.4f}".format(val_loss.item()))
+print("Training loss: {:.4f}; Validation loss: {:.4f}".format(loss_sum/loss_iter, val_loss.item()))
+
+
+
+
+
+            
+
+
+

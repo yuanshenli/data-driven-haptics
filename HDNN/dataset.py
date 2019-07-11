@@ -11,11 +11,10 @@ class HDDataset(Dataset):
         mypath = os.path.join(path, group)
         x = []
         y = []
-        for idx, file in enumerate(tqdm(os.listdir(mypath))):
+        for idx, file in enumerate(tqdm(sorted(os.listdir(mypath)))):
             filename = os.path.join(mypath, file)
             # print(filename)
             this_x = []
-            # this_y = []
             with open(filename) as f:
                 for idx, line in enumerate(f):
                     line = line.split(",")
