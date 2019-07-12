@@ -23,7 +23,6 @@ int accX = 0;
 
 int thisForce = 0;
 
-
 typedef enum {
   WAIT,
   SAMPLE,
@@ -39,12 +38,20 @@ States currState = WAIT;
 Sample_States currSampleState = SAMPLE_BACK;
 
 /* sampling profile */
-float A_samp = 150.0;
-int T_samp = 1000;
-int t_samp = 0;
+float A_samp = 220.0;
+int fs = 1000;        // [Hz]
+long t_samp = 0;
 unsigned int t_ms_curr;
 unsigned int t_ms_last = 0;
-int t_res = 1;  // [ms]
+int t_res = 1;            // [ms]
+
+float f0 = 0.05;           // [Hz]
+float f1 = 5.0;          // [Hz]
+float sweepTime = 10.0;   // [s]
+
+unsigned int T_samp_update_curr = 0;
+unsigned int T_samp_update_last = 0;
+//unsigned int T_samp_update_interval = ;
 
 
 void setup() {
@@ -92,7 +99,7 @@ void loop() {
   updateEncoderAB();
   filterEncoderAB();
   Input = Input_pos;
-  
+
   switch (currState) {
     case WAIT:
       motorOff();
@@ -103,7 +110,7 @@ void loop() {
       }
       break;
     case SAMPLE:
-//      manualSample();
+      //      manualSample();
       autoSample();
 
       break;
@@ -113,8 +120,8 @@ void loop() {
       Serial.println("switch to WAIT");
       break;
   }
-  
-  
+
+
 }
 
 void autoSample() {
@@ -131,15 +138,41 @@ void autoSample() {
     analogWrite(pwmPin0, pwmVal0);
     analogWrite(pwmPin1, pwmVal1);
   }
-  T_samp = analogRead(34);
+  //  T_samp = analogRead(34);
   t_ms_curr = millis();
-  if (t_ms_curr - t_ms_last > t_res) {
+  if (t_ms_curr - t_ms_last > 1000.0 / (float)fs) {
     t_ms_last = t_ms_curr;
-    Setpoint = A_samp * sin(2.0 * M_PI / (float)T_samp * (float)t_samp) - A_samp;
+    Setpoint = bidirChirp(A_samp, A_samp, f0, f1, sweepTime, t_samp, fs);
     t_samp++;
-    t_samp %= T_samp;
   }
 }
+
+/*************************************
+   function: bidirChipr
+   Inputs:
+        float A_max: largest magnitude
+        float A_min: smallest magnitude
+        float f0: smallest freq
+        float f1: largest freq
+        float sweepTime: time from f0 to f1, and vice versa [s]
+        int tn: time stamps for each sample
+        int fs: sampling freq  [fq]
+*/
+
+float bidirChirp(float A_max, float A_min, float f0, float f1, float sweepTime, int tn, int fs) {
+  
+  int n_sample_per_sweep = (int)sweepTime * fs;
+  int tn_mod = tn % (2 * n_sample_per_sweep);
+  float slope = (f1 - f0) / (float) n_sample_per_sweep;
+
+  if (tn_mod > n_sample_per_sweep) tn_mod = 2 * n_sample_per_sweep - tn_mod;
+  float f_n = f0 + slope * (float) tn_mod;
+
+  float y = A_max * sin(2.0 * M_PI * f_n * (float) tn_mod / (float) fs ) - A_max;
+  return y;
+}
+
+
 
 void manualSample() {
   debouncer.update();
@@ -186,16 +219,23 @@ void updateAcc() {
   accZ = analogRead(accPinZ);
 }
 
+
+
+
+
+
 void printVals() {
   currPrintTime = millis();
-  if (currPrintTime - lastPrintTime > printTimeInterval) {
-    Serial.print(Input_pos);
-    Serial.print(", ");
-    Serial.print(thisForce);
-    Serial.print(", ");
-    Serial.print(accZ-538);
-    Serial.print(", ");
-    Serial.println(ct);
+    if (currPrintTime - lastPrintTime > printTimeInterval) {
+//  if (currPrintTime - lastPrintTime > 5) {
+        Serial.print(Input_pos);
+        Serial.print(", ");
+        Serial.print(thisForce);
+        Serial.print(", ");
+        Serial.print(accZ-538);
+        Serial.print(", ");
+    Serial.println(Setpoint);
+    //    T_samp = 1000 * ct;
     ct = 0;
     lastPrintTime = currPrintTime;
   }
