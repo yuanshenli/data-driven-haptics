@@ -13,9 +13,9 @@ from torch.utils.data import DataLoader
 # import torch.nn.functional as F
 
 
-logdir = 'runs/HDModel-190710-162338'
+logdir = 'runs/HDModel-190711-210401'
 
-resume_epochs = 186
+resume_epochs = 2
 n_epochs = 10000
 validation_interval = 50
 
@@ -34,12 +34,12 @@ criterion = nn.MSELoss()
 # optimizer.load_state_dict(torch.load(os.path.join(logdir, 'last-optimizer-state.pt')))
 
 print('---- loading training data ------')
-train_set = HDDataset(path='data', group='train')
+train_set = HDDataset(path='data_chirp', group='train')
 training_generator = DataLoader(train_set, batch_size, shuffle=False)
 
 
 print('---- loading validation data ----')
-validation_set = HDDataset(path='data', group='validation')
+validation_set = HDDataset(path='data_chirp', group='validation')
 validation_generator = DataLoader(validation_set, len(validation_set), shuffle=False)
 
 

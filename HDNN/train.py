@@ -22,11 +22,11 @@ n_epochs = 10000
 validation_interval = 1
 
 lr=0.0001
-batch_size = 2580
+batch_size = 32
 input_size = 299
 
 patience, num_trial = 0, 0
-max_patience, max_trial = 20, 20
+max_patience, max_trial = 5, 5
 
 loss_sum = 0
 loss_iter = 0
@@ -48,12 +48,12 @@ criterion = nn.MSELoss()
 optimizer = torch.optim.Adam(model.parameters(), lr=lr)
 
 print('---- loading training data ------')
-train_set = HDDataset(path='data', group='train')
-training_generator = DataLoader(train_set, batch_size, shuffle=False)
+train_set = HDDataset(path='data_chirp', group='train')
+training_generator = DataLoader(train_set, batch_size, shuffle=True)
 
 print('---- loading validation data ----')
-validation_set = HDDataset(path='data', group='validation')
-validation_generator = DataLoader(validation_set, len(validation_set), shuffle=False)
+validation_set = HDDataset(path='data_chirp', group='validation')
+validation_generator = DataLoader(validation_set, len(validation_set), shuffle=True)
 
 print('---- training -------------------')
 for epoch in tqdm(range(n_epochs)):

@@ -1,10 +1,8 @@
 .DS_Store
 ~$*
 HDNN/runs/*
-HDNN/data/train/*
-HDNN/data/test/*
-HDNN/data/validation/*
-HDNN/data/train_mini/*
+HDNN/data_simple/*
+HDNN/data_chirp/*
 HDNN/__pycache__*
 
 

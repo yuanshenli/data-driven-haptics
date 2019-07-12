@@ -18,13 +18,13 @@ class HDDataset(Dataset):
             with open(filename) as f:
                 for idx, line in enumerate(f):
                     line = line.split(",")
-                    d0 = float(line[0])
-                    d1 = float(line[1])
-                    d2 = float(line[2])
+                    d0 = float(line[0]) # pos
+                    d1 = float(line[1]) # force
+                    d2 = float(line[2]) # acc
                     if idx != 299: 
-                        this_x.append([d0, d1, d2])
+                        this_x.append([d0, d1, d2])  
                     else:
-                        y.append(d2)
+                        y.append(d1)
             x.append(this_x)
         self.x = np.asarray(x, dtype=np.float32)
         self.y = np.asarray(y, dtype=np.float32)

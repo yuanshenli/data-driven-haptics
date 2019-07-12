@@ -5,7 +5,7 @@ def split_file(lines_per_file, starting_line, save_dir):
 	smallfile = None
 	if not os.path.exists(save_dir):
 		os.makedirs(save_dir)
-	with open('7_5_22_48.txt') as bigfile:
+	with open('data_chirp/7_11_16_43.txt') as bigfile:
 		for lineno, line in enumerate(bigfile):
 			if lineno % lines_per_file == starting_line:
 				if smallfile:
@@ -36,13 +36,13 @@ if __name__== "__main__":
 	test_percent = 0.1
 	starting_line = 0
 	for starting_line in range(int(lines_per_file * train_percent)):
-		split_file(lines_per_file, starting_line, 'train')
+		split_file(lines_per_file, starting_line, 'data_chirp/train')
 
 	for starting_line in range(int(lines_per_file * train_percent), int(lines_per_file * (train_percent + validate_percent))):
-		split_file(lines_per_file, starting_line, 'validation')
+		split_file(lines_per_file, starting_line, 'data_chirp/validation')
 
 	for starting_line in range(int(lines_per_file * (train_percent + validate_percent)), lines_per_file):
-		split_file(lines_per_file, starting_line, 'test')
+		split_file(lines_per_file, starting_line, 'data_chirp/test')
 
 
 
