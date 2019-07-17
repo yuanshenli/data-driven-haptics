@@ -3,7 +3,7 @@
 HDNN/runs/*
 HDNN/data_simple/*
 HDNN/data_chirp/*
-HDNN/__pycache__*
+HDNN/__pycache__/*
 
 
 # Created by https://www.gitignore.io/api/python

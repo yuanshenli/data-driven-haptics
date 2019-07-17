@@ -2,6 +2,7 @@ import os
 import sys
 from datetime import datetime
 from tqdm import tqdm
+import numpy as np
 
 from hd_model import HDModel
 from dataset import HDDataset
@@ -23,7 +24,8 @@ validation_interval = 1
 
 lr=0.0001
 batch_size = 32
-input_size = 299
+input_size = 3
+seq_length = 299
 
 patience, num_trial = 0, 0
 max_patience, max_trial = 5, 5
@@ -55,6 +57,11 @@ print('---- loading validation data ----')
 validation_set = HDDataset(path='data_chirp', group='validation')
 validation_generator = DataLoader(validation_set, len(validation_set), shuffle=True)
 
+# batch = list(validation_generator)[0]
+# print(batch[0].size())
+# w, y = batch[0]
+# print(w.shape)
+
 print('---- training -------------------')
 for epoch in tqdm(range(n_epochs)):
 	# Train
@@ -67,6 +74,7 @@ for epoch in tqdm(range(n_epochs)):
 		local_a = local_a.to(device)
 		local_f = local_f.to(device)
 		local_y = local_y.to(device)
+		# print(local_x.size())
 		output = model(local_x, local_a, local_f)
 		loss = criterion(output.view(-1), local_y)
 		loss.backward() # Does backpropagation and calculates gradients

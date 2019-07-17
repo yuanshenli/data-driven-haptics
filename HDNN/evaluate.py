@@ -13,9 +13,9 @@ from torch.utils.data import DataLoader
 # import torch.nn.functional as F
 
 
-logdir = 'runs/HDModel-190711-210401'
+logdir = 'runs/HDModel-190715-175414'
 
-resume_epochs = 2
+resume_epochs = 164
 n_epochs = 10000
 validation_interval = 50
 
