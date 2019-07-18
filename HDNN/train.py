@@ -83,18 +83,27 @@ for epoch in tqdm(range(n_epochs)):
 		optimizer.step() # Updates the weights accordingly
 
 	# Evaludate
+	val_loss_sum = 0
+	val_loss_iter = 0
 	if epoch % validation_interval == 0 and epoch != 0:
-		model.eval()
+		# model.eval()
 		with torch.no_grad():
-			for validation_x, validation_a, validation_f, validation_y in validation_generator:
+			for validation_x, validation_a, validation_f, validation_y in training_generator:
 				validation_x = validation_x.to(device)
 				validation_a = validation_a.to(device)
 				validation_f = validation_f.to(device)
 				validation_y = validation_y.to(device)
 				validation_output = model(validation_x, validation_a, validation_f)
+
 				val_loss = criterion(validation_output.view(-1), validation_y)
+
+				val_loss_sum += val_loss.item()
+				val_loss_iter += 1
+				if val_loss_iter > len(validation_set):
+					break
 			print('Epoch: {}/{}.............'.format(epoch, n_epochs), end=' ')
-			print("Training loss: {:.4f}; Validation loss: {:.4f}".format(loss_sum/loss_iter, val_loss.item()))
+			# print("Training loss: {:.4f}; Validation loss: {:.4f}".format(loss_sum/loss_iter, val_loss_sum/val_loss_iter))
+			print(f"Training loss: {loss_sum/loss_iter}; Validation loss: {val_loss_sum/val_loss_iter}")
 			# print("Training loss: {:.4f}; Validation loss: {:.4f}".format(loss.item(), val_loss.item()))
 
 		is_better = len(hist_validation_loss) == 0 or val_loss.item() < min(hist_validation_loss)
