@@ -19,16 +19,17 @@ if not os.path.exists(logdir):
 	os.makedirs(logdir)
 
 resume_epochs = None
-n_epochs = 10000
+n_epochs = 100000
 validation_interval = 1
 
 lr=0.0001
 batch_size = 32
 input_size = 3
-seq_length = 299
+seq_length = 300
+cont_length = 200
 
 patience, num_trial = 0, 0
-max_patience, max_trial = 5, 5
+max_patience, max_trial = 500, 500
 
 loss_sum = 0
 loss_iter = 0
@@ -50,12 +51,26 @@ criterion = nn.MSELoss()
 optimizer = torch.optim.Adam(model.parameters(), lr=lr)
 
 print('---- loading training data ------')
-train_set = HDDataset(path='data_chirp', group='train')
-training_generator = DataLoader(train_set, batch_size, shuffle=True)
+# train_set = HDDataset(path='data_chirp', group='train')
+# training_generator = DataLoader(train_set, batch_size, shuffle=True)
+
+train_set = HDDataset(path='data_chirp', 
+					  data_name='7_11_16_43.txt', 
+					  group='train',
+					  sequence_length=seq_length,
+					  continuous_length=cont_length)
+training_generator = DataLoader(train_set, batch_size, shuffle=False)
 
 print('---- loading validation data ----')
-validation_set = HDDataset(path='data_chirp', group='validation')
-validation_generator = DataLoader(validation_set, len(validation_set), shuffle=True)
+# validation_set = HDDataset(path='data_chirp', group='validation')
+# validation_generator = DataLoader(validation_set, len(validation_set), shuffle=True)
+
+validation_set = HDDataset(path='data_chirp', 
+					  data_name='7_11_16_43.txt', 
+					  group='validation',
+					  sequence_length=seq_length,
+					  continuous_length=cont_length)
+validation_generator = DataLoader(validation_set, batch_size, shuffle=False)
 
 # batch = list(validation_generator)[0]
 # print(batch[0].size())
@@ -86,9 +101,9 @@ for epoch in tqdm(range(n_epochs)):
 	val_loss_sum = 0
 	val_loss_iter = 0
 	if epoch % validation_interval == 0 and epoch != 0:
-		# model.eval()
+		model.eval()
 		with torch.no_grad():
-			for validation_x, validation_a, validation_f, validation_y in training_generator:
+			for validation_x, validation_a, validation_f, validation_y in validation_generator:
 				validation_x = validation_x.to(device)
 				validation_a = validation_a.to(device)
 				validation_f = validation_f.to(device)
@@ -99,8 +114,8 @@ for epoch in tqdm(range(n_epochs)):
 
 				val_loss_sum += val_loss.item()
 				val_loss_iter += 1
-				if val_loss_iter > len(validation_set):
-					break
+				# if val_loss_iter > len(validation_set):
+				# 	break
 			print('Epoch: {}/{}.............'.format(epoch, n_epochs), end=' ')
 			# print("Training loss: {:.4f}; Validation loss: {:.4f}".format(loss_sum/loss_iter, val_loss_sum/val_loss_iter))
 			print(f"Training loss: {loss_sum/loss_iter}; Validation loss: {val_loss_sum/val_loss_iter}")
@@ -109,7 +124,7 @@ for epoch in tqdm(range(n_epochs)):
 		is_better = len(hist_validation_loss) == 0 or val_loss.item() < min(hist_validation_loss)
 
 		hist_training_loss.append(loss_sum/loss_iter)
-		hist_validation_loss.append(val_loss.item())
+		hist_validation_loss.append(val_loss_sum/val_loss_iter)
 		hist_epoch.append(epoch)
 
 		# Save and Early Stop

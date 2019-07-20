@@ -30,10 +30,10 @@ class HDModel(nn.Module):
         a_unsqueezed = torch.unsqueeze(a, 2)
         f_unsqueezed = torch.unsqueeze(f, 2)
 
-        stacked = torch.cat((x_unsqueezed, a_unsqueezed, f_unsqueezed), 2)   # (batch, seq, input)   (32, 299, 3)
-        hidden_out, _ = self.rnn(stacked)         # (batch, seq, hidden)   (32, 299, 3)
-        out_relu = self.relu(hidden_out[:,-1])          # (batch, seq, hidden)   (32, 299, 1)
-        out = self.fc(out_relu)
+        out = torch.cat((x_unsqueezed, a_unsqueezed, f_unsqueezed), 2)   # (batch, seq, input)   (32, 299, 3)
+        out, _ = self.rnn(out)         # (batch, seq, hidden)   (32, 299, 3)
+        out = self.relu(out[:,-1])          # (batch, seq, hidden)   (32, 299, 1)
+        out = self.fc(out)
 
         # out1_relu = self.relu(out1)
         # out = self.fc2(torch.squeeze(out1_relu)) # (batch, 1)   (32, 1)
