@@ -91,6 +91,7 @@ class HDDataset(Dataset):
     def __getitem__(self, index):
         this_idx = self.idx_set[index]
         # print(this_idx)
+        # print(self.x[this_idx:this_idx+self.sequence_length-2, 1])
         return (self.x[this_idx:this_idx+self.sequence_length-2, 0],
                 self.x[this_idx:this_idx+self.sequence_length-2, 1],
                 self.x[this_idx:this_idx+self.sequence_length-2, 2], 
