@@ -92,10 +92,14 @@ class HDDataset(Dataset):
         this_idx = self.idx_set[index]
         # print(this_idx)
         # print(self.x[this_idx:this_idx+self.sequence_length-2, 1])
-        return (self.x[this_idx:this_idx+self.sequence_length-2, 0],
-                self.x[this_idx:this_idx+self.sequence_length-2, 1],
-                self.x[this_idx:this_idx+self.sequence_length-2, 2], 
-                self.x[this_idx+self.sequence_length-1, 1])
+        if self.x[this_idx+self.sequence_length-1, 1] > 14.0:
+            y = 1
+        else:
+            y = 0
+        return (self.x[this_idx:this_idx+self.sequence_length-1, 0],
+                self.x[this_idx:this_idx+self.sequence_length-1, 1],
+                self.x[this_idx:this_idx+self.sequence_length-1, 2], 
+                y)
 
     def __len__(self):
         return len(self.idx_set)

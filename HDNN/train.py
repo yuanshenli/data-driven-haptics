@@ -23,11 +23,11 @@ if not os.path.exists(logdir):
 print(f'tensorboard --logdir={logdir}')
 writer = SummaryWriter(log_dir=logdir)
 
-device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+device = torch.device('cuda:2' if torch.cuda.is_available() else 'cpu')
 print('Using device:', device)
 
 resume_epochs = None
-n_epochs = 100000
+n_epochs = 10000
 validation_interval = 1
 
 lr=0.0001
@@ -36,11 +36,11 @@ learning_rate_decay_rate = 0.98
 
 batch_size = 32
 input_size = 3
-seq_length = 300
-cont_length = 300
+seq_length = 10001
+cont_length = 10000
 
 patience, num_trial = 0, 0
-max_patience, max_trial = 5, 5
+max_patience, max_trial = 50, 50
 
 hist_epoch = []
 hist_training_loss = []
@@ -48,7 +48,7 @@ hist_validation_loss = []
 
 # init model
 if resume_epochs is None:
-	model = HDModel(input_size=input_size)
+	model = HDModel(seq_len=seq_length, input_size=input_size)
 	# if torch.cuda.device_count() > 1:
 	# 	model = torch.nn.DataParallel(model, device_ids=[0, 2])
 	model.to(device)
@@ -63,7 +63,10 @@ else:
 
 
 print(model)
-criterion = nn.MSELoss()
+# criterion = nn.MSELoss()
+class_weight = torch.FloatTensor([0.99, 1.0])
+class_weight = class_weight.to(device)
+criterion = nn.CrossEntropyLoss(weight=class_weight)
 scheduler = StepLR(optimizer, step_size=learning_rate_decay_steps, gamma=learning_rate_decay_rate)
 
 
@@ -101,9 +104,13 @@ for epoch in tqdm(range(resume_epochs + 1, n_epochs + 1)):
 		local_a = local_a.to(device)
 		local_f = local_f.to(device)
 		local_y = local_y.to(device)
+
 		# print(local_x.size())
 		output = model(local_x, local_a, local_f)
-		loss = criterion(output.view(-1), local_y)
+		# print(local_y.size())
+		# print(output.size())
+
+		loss = criterion(output, local_y)
 		loss.backward() # Does backpropagation and calculates gradients
 		loss_sum += loss.item()
 		loss_iter += 1
@@ -126,7 +133,8 @@ for epoch in tqdm(range(resume_epochs + 1, n_epochs + 1)):
 				validation_y = validation_y.to(device)
 				validation_output = model(validation_x, validation_a, validation_f)
 
-				val_loss = criterion(validation_output.view(-1), validation_y)
+				# val_loss = criterion(validation_output.view(-1), validation_y)
+				val_loss = criterion(validation_output, validation_y)
 
 				val_loss_sum += val_loss.item()
 				val_loss_iter += 1

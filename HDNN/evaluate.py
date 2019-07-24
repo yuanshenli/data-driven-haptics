@@ -13,23 +13,27 @@ from torch.utils.data import DataLoader
 # import torch.nn.functional as F
 
 
-logdir = 'runs/HDModel-190721-181617'
+logdir = 'runs/HDModel-190723-164238'
 
-resume_epochs = 319
+resume_epochs = 15
 n_epochs = 10000
 validation_interval = 1
 
 
 batch_size = 64
 input_size = 3
-seq_length = 300
+seq_length = 301
 cont_length = 300
 
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
 model_path = os.path.join(logdir, f'model-{resume_epochs}.pt')
 model = torch.load(model_path)
-criterion = nn.MSELoss()
+# criterion = nn.MSELoss()
+class_weight = torch.FloatTensor([0.9, 1.0])
+class_weight = class_weight.to(device)
+criterion = nn.CrossEntropyLoss(weight=class_weight)
+
 # optimizer = torch.optim.Adam(model.parameters(), lr=lr)
 # optimizer.load_state_dict(torch.load(os.path.join(logdir, 'last-optimizer-state.pt')))
 
@@ -65,9 +69,11 @@ for local_x, local_a, local_f, local_y in training_generator:
     local_y = local_y.to(device)
     output = model(local_x, local_a, local_f)
     for idx in range(len(local_y)):
-        print("{:.1f}, {:.1f}".format(output.view(-1)[idx], local_y[idx]))
+        # print("{:.1f}, {:.1f}".format(output.view(-1)[idx], local_y[idx]))
+        print("{:.1f}, {:.1f}, {:.1f}".format(output[idx, 0], output[idx, 1], local_y[idx]))
     # print(local_y)
-    loss = criterion(output.view(-1), local_y)
+    # loss = criterion(output.view(-1), local_y)
+    loss = criterion(output, local_y)    
     loss_sum += loss.item()
     loss_iter += 1
 
@@ -87,9 +93,12 @@ with open(validation_output_file_name, 'w') as validation_output_file:
         validation_y = validation_y.to(device)
         validation_output = model(validation_x, validation_a, validation_f)
         for idx in range(len(validation_y)):
-            print("{:.1f}, {:.1f}".format(validation_output.view(-1)[idx], validation_y[idx]))
-            validation_output_file.write('%.1f, %.1f\n' % (validation_output.view(-1)[idx], validation_y[idx]))
-        val_loss = criterion(validation_output.view(-1), validation_y)
+            # print("{:.1f}, {:.1f}".format(validation_output.view(-1)[idx], validation_y[idx])) 
+            print("{:.1f}, {:.1f}, {:.1f}".format(validation_output[idx, 0], validation_output[idx, 1], validation_y[idx]))
+            # validation_output_file.write('%.1f, %.1f\n' % (validation_output.view(-1)[idx], validation_y[idx]))
+            validation_output_file.write('%.1f, %.1f, %.1f\n' % (validation_output[idx, 0], validation_output[idx, 1], validation_y[idx]))
+        # val_loss = criterion(validation_output.view(-1), validation_y)
+        val_loss = criterion(validation_output, validation_y)
         val_loss_sum += val_loss.item()
         val_loss_iter += 1
 
