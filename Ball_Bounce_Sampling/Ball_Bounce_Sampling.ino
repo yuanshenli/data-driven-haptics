@@ -45,8 +45,8 @@ unsigned int t_ms_curr;
 unsigned int t_ms_last = 0;
 int t_res = 1;            // [ms]
 
-float f0 = 0.05;           // [Hz]
-float f1 = 5.0;          // [Hz]
+float f0 = 5.5;           // [Hz]
+float f1 = 7.0;          // [Hz]
 float sweepTime = 10.0;   // [s]
 
 unsigned int T_samp_update_curr = 0;
@@ -225,7 +225,7 @@ void updateAcc() {
 
 
 void printVals() {
-  currPrintTime = millis();
+  currPrintTime = micros();
     if (currPrintTime - lastPrintTime > printTimeInterval) {
 //  if (currPrintTime - lastPrintTime > 5) {
         Serial.print(Input_pos);
