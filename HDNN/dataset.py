@@ -3,6 +3,7 @@ from torch.utils.data import Dataset, TensorDataset
 import numpy as np
 from tqdm import tqdm
 
+
 class HDDataset(Dataset):
     def __init__(self, path='', data_name='', group=None, sequence_length=300, continuous_length=300):
         self.path = path
@@ -56,10 +57,17 @@ class HDDataset(Dataset):
         if f:
             f.close()
 
+        self.x = np.asarray(x, dtype=np.float32)
+
         if group == 'train':
             for jj in range(num_chunks):
                 for ii in range(int(continuous_length * train_percent)):
-                    idx_set.append(ii + one_chunk*jj)
+                    this_idx = ii + one_chunk*jj
+                    if self.x[this_idx+self.sequence_length-1, 1] > 14.0:
+                        for _ in range(30):
+                            idx_set.append(ii + one_chunk*jj)
+                    else:
+                        idx_set.append(ii + one_chunk * jj)
             # last chunk, could be empty
             left = list(range(one_chunk*num_chunks, 
                               min(last_idx, last_chunk_cutoff_train), 1))
@@ -82,24 +90,23 @@ class HDDataset(Dataset):
         
         idx_set = idx_set + left
 
-        self.x = np.asarray(x, dtype=np.float32)
         self.idx_set = np.asarray(idx_set, dtype=np.int)  
 
-        # print(idx_set)  
-
+        # print(idx_set)
 
     def __getitem__(self, index):
         this_idx = self.idx_set[index]
         # print(this_idx)
         # print(self.x[this_idx:this_idx+self.sequence_length-2, 1])
         if self.x[this_idx+self.sequence_length-1, 1] > 14.0:
-            y = 1
-        else:
             y = 0
-        return (self.x[this_idx:this_idx+self.sequence_length-1, 0],
-                self.x[this_idx:this_idx+self.sequence_length-1, 1],
-                self.x[this_idx:this_idx+self.sequence_length-1, 2], 
-                y)
+        else:
+            y = 1
+        # print(y)
+        return np.vstack((self.x[this_idx:this_idx + self.sequence_length - 1, 0],
+                          self.x[this_idx:this_idx + self.sequence_length - 1, 1],
+                          self.x[this_idx:this_idx + self.sequence_length - 1, 2])), \
+               self.x[this_idx + self.sequence_length - 1, 1].reshape(-1)
 
     def __len__(self):
         return len(self.idx_set)

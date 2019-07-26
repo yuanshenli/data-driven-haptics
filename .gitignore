@@ -4,7 +4,7 @@ HDNN/runs/*
 HDNN/data_simple/*
 HDNN/data_chirp/*
 HDNN/__pycache__/*
-
+.idea/*
 
 # Created by https://www.gitignore.io/api/python
 # Edit at https://www.gitignore.io/?templates=python
