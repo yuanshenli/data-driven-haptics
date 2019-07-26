@@ -16,8 +16,8 @@ from tensorboardX import SummaryWriter
 
 from params import *
 
-torch.manual_seed(30)
-torch.cuda.manual_seed_all(30)
+torch.manual_seed(9229)
+torch.cuda.manual_seed_all(9229)
 
 logdir = 'runs/HDModel-' + datetime.now().strftime('%y%m%d-%H%M%S')
 # logdir = 'runs/HDModel-190721-171338'
@@ -89,7 +89,7 @@ validation_set = HDDataset(path='data_chirp',
                            group='validation',
                            sequence_length=seq_length,
                            continuous_length=cont_length)
-validation_generator = DataLoader(validation_set, batch_size, shuffle=True)
+validation_generator = DataLoader(validation_set, batch_size, shuffle=False)
 
 print(f"Training size: {len(train_set)}; Validation size: {len(validation_set)}")
 
@@ -120,7 +120,7 @@ for epoch in tqdm(range(resume_epochs + 1, n_epochs + 1)):
         # print(loss_iter)
         # print(loss.item())
         optimizer.step()  # Updates the weights accordingly
-        if loss_iter > 1000:
+        if loss_iter > 20:
             break
 
     # Evaluate
@@ -140,7 +140,7 @@ for epoch in tqdm(range(resume_epochs + 1, n_epochs + 1)):
                 val_loss_sum += val_loss.item()
                 val_loss_iter += 1
 
-                if val_loss_iter > 1000:
+                if val_loss_iter > 0:
                     break
 
             ave_train_loss = loss_sum / loss_iter

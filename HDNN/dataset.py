@@ -13,6 +13,8 @@ class HDDataset(Dataset):
         self.sequence_length = sequence_length
         self.continuous_length = continuous_length
 
+        self.thresh = 16.0
+
         x = []
         idx_set = []
         train_percent = 0.8
@@ -63,8 +65,8 @@ class HDDataset(Dataset):
             for jj in range(num_chunks):
                 for ii in range(int(continuous_length * train_percent)):
                     this_idx = ii + one_chunk*jj
-                    if self.x[this_idx+self.sequence_length-1, 1] > 14.0:
-                        for _ in range(30):
+                    if self.x[this_idx+self.sequence_length-1, 1] > self.thresh:
+                        for _ in range(100):
                             idx_set.append(ii + one_chunk*jj)
                     else:
                         idx_set.append(ii + one_chunk * jj)
@@ -98,7 +100,7 @@ class HDDataset(Dataset):
         this_idx = self.idx_set[index]
         # print(this_idx)
         # print(self.x[this_idx:this_idx+self.sequence_length-2, 1])
-        if self.x[this_idx+self.sequence_length-1, 1] > 14.0:
+        if self.x[this_idx+self.sequence_length-1, 1] > self.thresh:
             y = 0
         else:
             y = 1
