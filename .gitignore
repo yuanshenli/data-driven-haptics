@@ -4,6 +4,7 @@ HDNN/runs/*
 HDNN/data_simple/*
 HDNN/data_chirp/*
 HDNN/__pycache__/*
+Ball_Bounce_Data_Collector/results/*.txt
 .idea/*
 
 # Created by https://www.gitignore.io/api/python
